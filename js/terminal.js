@@ -3,8 +3,7 @@
 // ============================================================
 import { VirtualFS } from "./filesystem.js";
 import { parse, stripHtml } from "./parser.js";
-import { COMMANDS, setFS, esc } from "./commands.js";
-import { EASTER_EGG_COMMANDS, isForkBomb } from "./easter-eggs.js";
+import { COMMANDS, setFS, esc, isForkBomb } from "./commands.js";
 
 // Linkify URLs in HTML output — only touches text outside of tags
 const URL_RE = /\bhttps?:\/\/[^\s<>"']+|(?:www\.)[^\s<>"']+|\b[a-zA-Z0-9-]+(?:\.[a-zA-Z]{2,})+(?:\/[^\s<>"']*)?/g;
@@ -28,7 +27,7 @@ export class Terminal {
     this.history    = [];
     this.historyIdx = -1;
     this.savedInput = "";
-    this.tabState   = { prefix: null, matches: [], idx: 0 };
+    this.tabState   = { prefix: null, matches: [], idx: 0, tabCount: 0 };
 
     // DOM references
     this.outputEl  = document.getElementById("output");
@@ -36,8 +35,7 @@ export class Terminal {
     this.promptEl  = document.getElementById("prompt-display");
     this.bodyEl    = document.getElementById("terminal-body");
 
-    // Merge command maps — easter eggs are lower priority
-    this.commands = { ...EASTER_EGG_COMMANDS, ...COMMANDS };
+    this.commands = COMMANDS;
 
     this._bindEvents();
     this._renderPrompt();
@@ -48,24 +46,38 @@ export class Terminal {
   _bindEvents() {
     this.inputEl.addEventListener("keydown", (e) => this._onKeyDown(e));
 
-    // Click anywhere in terminal body to focus input
-    this.bodyEl.addEventListener("click", (e) => {
-      // Don't steal focus from text selection
-      if (!window.getSelection().toString()) {
-        this.inputEl.focus();
+    // Handle paste with newlines — execute each line as a command
+    this.inputEl.addEventListener("paste", (e) => {
+      const text = e.clipboardData?.getData("text");
+      if (!text || !text.includes("\n")) return; // let single-line paste work normally
+      e.preventDefault();
+      const lines = text.split(/\r?\n/);
+      // Append first line to current input
+      const first = this.inputEl.value + lines[0];
+      this.inputEl.value = first;
+      this._execute();
+      // Execute remaining non-empty lines
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim() && i === lines.length - 1) break; // skip trailing empty line
+        this.inputEl.value = line;
+        this._execute();
       }
     });
 
-    // Keep input focused
-    this.inputEl.addEventListener("blur", () => {
-      setTimeout(() => this.inputEl.focus(), 10);
+    // Click anywhere in terminal body to focus input
+    this.bodyEl.addEventListener("mouseup", (e) => {
+      // Don't steal focus when user is selecting text
+      if (!window.getSelection().toString()) {
+        this.inputEl.focus();
+      }
     });
   }
 
   _onKeyDown(e) {
     // Reset tab state on any key except Tab
     if (e.key !== "Tab") {
-      this.tabState = { prefix: null, matches: [], idx: 0 };
+      this.tabState = { prefix: null, matches: [], idx: 0, tabCount: 0 };
     }
 
     switch (e.key) {
@@ -86,7 +98,7 @@ export class Terminal {
 
       case "Tab":
         e.preventDefault();
-        this._tabComplete();
+        this._tabComplete(e.shiftKey ? -1 : 1);
         break;
 
       case "c":
@@ -208,10 +220,18 @@ export class Terminal {
   }
 
   _runSegment(seg, stdin) {
-    const { command, args, flags } = seg;
+    let { command, args, flags } = seg;
     if (!command) return null;
 
-    const handler = this.commands[command];
+    let handler = this.commands[command];
+
+    // Handle "cd.." / "cd~" / "cd/" etc — common typos missing the space
+    if (!handler && /^cd[.~\/]/.test(command)) {
+      command = "cd";
+      args = [seg.command.slice(2), ...args];
+      handler = this.commands["cd"];
+    }
+
     if (!handler) {
       return `<span class="error">${esc(command)}: command not found</span>`;
     }
@@ -312,59 +332,99 @@ export class Terminal {
     this._scrollToBottom();
   }
 
-  // ── Tab completion ─────────────────────────────────────────
+  // ── Tab completion (bash-style) ────────────────────────────
 
-  _tabComplete() {
+  _tabComplete(direction = 1) {
+    this.tabState.tabCount = (this.tabState.tabCount || 0) + 1;
+
     const val = this.inputEl.value;
     const parts = val.split(/\s+/);
     const isFirst = parts.length <= 1;
-    const current = parts[parts.length - 1] || "";
-
-    let matches;
-
-    if (isFirst) {
-      // Command completion
-      const allCmds = Object.keys(this.commands);
-      matches = allCmds.filter(c => c.startsWith(current));
-    } else {
-      // Path completion
-      matches = this._pathComplete(current);
+    const command = parts[0];
+    const dirsOnly = command === "cd";
+    const hasTrailingSpace = val.endsWith(" ");
+    const current = (isFirst || !hasTrailingSpace) ? (parts[parts.length - 1] || "") : "";
+    if (hasTrailingSpace && !isFirst) {
+      parts.push("");
     }
 
-    if (matches.length === 0) return;
-
-    if (matches.length === 1) {
-      // Single match — complete it
-      parts[parts.length - 1] = matches[0];
-      this.inputEl.value = parts.join(" ");
+    // Empty input: ignore single Tab, double Tab lists all commands
+    if (!val.trim()) {
+      if (this.tabState.tabCount >= 2) {
+        const allCmds = Object.keys(this.commands).sort();
+        this._showCompletions(allCmds);
+      }
       return;
     }
 
-    // Multiple matches — find common prefix
-    const prefix = this._commonPrefix(matches);
-    if (prefix.length > current.length) {
-      parts[parts.length - 1] = prefix;
-      this.inputEl.value = parts.join(" ");
+    // Compute matches on first Tab press
+    if (this.tabState.prefix === null) {
+      let matches;
+      if (isFirst) {
+        matches = Object.keys(this.commands).filter(c => c.startsWith(current)).sort();
+      } else {
+        matches = this._pathComplete(current, dirsOnly).sort();
+      }
+
+      if (matches.length === 0) return;
+
+      // Unique match: complete it immediately
+      if (matches.length === 1) {
+        parts[parts.length - 1] = matches[0];
+        this.inputEl.value = parts.join(" ");
+        return;
+      }
+
+      // Multiple matches: fill common prefix
+      const common = this._commonPrefix(matches);
+      if (common.length > current.length) {
+        parts[parts.length - 1] = common;
+        this.inputEl.value = parts.join(" ");
+      }
+
+      this.tabState = { ...this.tabState, prefix: current, matches, idx: 0, parts: [...parts] };
       return;
     }
 
-    // Show all matches (double-tab behavior — show immediately)
-    this._freezeLine(val);
-    this._appendOutput(matches.map(m => `  ${esc(m)}`).join("\n"));
-    this._renderPrompt();
-    this.inputEl.value = val;
-    this._scrollToBottom();
+    // Second+ Tab with multiple matches: display them
+    const { matches } = this.tabState;
+    if (matches.length > 1) {
+      this._showCompletions(matches);
+    }
   }
 
-  _pathComplete(partial) {
-    let dir, prefix;
+  _showCompletions(items) {
+    // Freeze current prompt + input, show matches, re-render prompt
+    this._freezeLine(this.inputEl.value);
+    const cols = this._columnize(items);
+    this._appendOutput(cols);
+    this._scrollToBottom();
+    // Reset so next Tab recomputes
+    this.tabState = { prefix: null, matches: [], idx: 0, tabCount: 0 };
+  }
+
+  _columnize(items) {
+    if (items.length === 0) return "";
+    const maxLen = Math.max(...items.map(s => s.length)) + 2;
+    const termWidth = 80;
+    const cols = Math.max(1, Math.floor(termWidth / maxLen));
+    const rows = [];
+    for (let i = 0; i < items.length; i += cols) {
+      rows.push(items.slice(i, i + cols).map(s => esc(s).padEnd(maxLen)).join(""));
+    }
+    return rows.join("\n");
+  }
+
+  _pathComplete(partial, dirsOnly = false) {
+    let dir, prefix, dirPart;
 
     if (partial.includes("/")) {
       const lastSlash = partial.lastIndexOf("/");
-      const dirPart = partial.slice(0, lastSlash + 1) || "/";
+      dirPart = partial.slice(0, lastSlash + 1) || "/";
       prefix = partial.slice(lastSlash + 1);
       dir = this.fs.getNode(dirPart);
     } else {
+      dirPart = "";
       dir = this.fs.getNode(this.fs.cwd);
       prefix = partial;
     }
@@ -375,10 +435,9 @@ export class Terminal {
     const matches = [];
 
     for (const [name, node] of entries) {
+      if (dirsOnly && node.type !== "dir") continue;
       if (name.startsWith(prefix)) {
-        const base = partial.includes("/")
-          ? partial.slice(0, partial.lastIndexOf("/") + 1) + name
-          : name;
+        const base = dirPart ? dirPart + name : name;
         matches.push(node.type === "dir" ? base + "/" : base);
       }
     }

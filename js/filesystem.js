@@ -3,12 +3,12 @@
 // Edit this section — all personal data lives here.
 // ============================================================
 export const PORTFOLIO_CONFIG = {
-  name:       "Your Name",
+  name:       "Stephen Burling",
   title:      "Software Engineer",
-  location:   "San Francisco, CA",
-  email:      "your.email@example.com",
-  github:     "github.com/yourusername",
-  linkedin:   "linkedin.com/in/yourusername",
+  location:   "Austin, TX",
+  email:      "stephenburling99@gmail.com",
+  github:     "https://github.com/sburling99",
+  linkedin:   "https://www.linkedin.com/in/stephenburling/",
   website:    "yourwebsite.com",
 
   about: `Hi! I'm Your Name, a software engineer based in San Francisco.
@@ -460,7 +460,7 @@ ${ts} portfolio portfolio-server[80]: Serving curious visitor #${Math.floor(Math
               "ls","cat","grep","find","tree","head","tail","wc","sort","uniq",
               "echo","pwd","touch","mkdir","file","stat","rev","date","env","id",
               "uname","uptime","whoami","hostname","which","type","man","history",
-              "vim","cowsay","sl","fortune","matrix","neofetch","ping","ssh",
+              "vim","neofetch","ping","ssh",
               "curl","wget","top","htop","sudo","rm","bash",
             ].map(cmd => [cmd, { type: "file", permissions: "-rwxr-xr-x", content: `#!/bin/bash\n# ${cmd}` }])),
           },
