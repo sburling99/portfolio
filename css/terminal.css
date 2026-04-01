@@ -1,0 +1,203 @@
+/* ============================================================
+   Tokyo Night — Official Palette
+   ============================================================ */
+:root {
+  --bg:         #1a1b26;
+  --fg:         #a9b1d6;
+  --fg-bright:  #c0caf5;
+  --comment:    #565f89;
+  --blue:       #7aa2f7;
+  --cyan:       #7dcfff;
+  --green:      #9ece6a;
+  --magenta:    #bb9af7;
+  --orange:     #ff9e64;
+  --red:        #f7768e;
+  --yellow:     #e0af68;
+  --teal:       #73daca;
+
+  --title-bg:   #16161e;
+  --border:     #292e42;
+  --selection:  #2d3149;
+
+  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --font-size: 14px;
+  --line-height: 1.6;
+}
+
+/* ── Reset ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  color: var(--fg);
+}
+
+/* ── Terminal body ──────────────────────────────────────────── */
+#terminal-body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  cursor: text;
+  line-height: var(--line-height);
+}
+
+#terminal-body::-webkit-scrollbar          { width: 7px; }
+#terminal-body::-webkit-scrollbar-track   { background: transparent; }
+#terminal-body::-webkit-scrollbar-thumb   { background: var(--border); border-radius: 4px; }
+#terminal-body::-webkit-scrollbar-thumb:hover { background: var(--comment); }
+
+/* ── Output ─────────────────────────────────────────────────── */
+#output { white-space: pre-wrap; word-break: break-word; }
+
+/* ── Clickable links ────────────────────────────────────────── */
+.term-link {
+  color: var(--cyan);
+  text-decoration: none;
+  cursor: pointer;
+}
+.term-link:hover {
+  text-decoration: underline;
+}
+
+.output-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: var(--line-height);
+  min-height: 1em;
+}
+
+.output-block { margin-bottom: 0; }
+
+/* ── Frozen prompt (executed command line) ──────────────────── */
+.frozen-prompt {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  line-height: var(--line-height);
+}
+
+.frozen-command { color: var(--fg-bright); }
+
+/* ── Live prompt line ───────────────────────────────────────── */
+#prompt-line {
+  display: flex;
+  align-items: baseline;
+  margin-top: 2px;
+  padding-bottom: 6px;
+}
+
+#prompt-display {
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: var(--line-height);
+}
+
+#input {
+  flex: 1;
+  min-width: 2ch;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg-bright);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  caret-color: var(--fg-bright);
+  caret-shape: block;
+}
+
+
+
+/* ── Prompt colors ──────────────────────────────────────────── */
+.prompt-user   { color: var(--green);   font-weight: 700; }
+.prompt-at     { color: var(--comment); }
+.prompt-host   { color: var(--blue);    }
+.prompt-colon  { color: var(--comment); }
+.prompt-path   { color: var(--magenta); }
+.prompt-dollar { color: var(--fg-bright); }
+
+/* ── Generic color classes ──────────────────────────────────── */
+.c-blue      { color: var(--blue);    }
+.c-cyan      { color: var(--cyan);    }
+.c-green     { color: var(--green);   }
+.c-magenta   { color: var(--magenta); }
+.c-orange    { color: var(--orange);  }
+.c-red       { color: var(--red);     }
+.c-yellow    { color: var(--yellow);  }
+.c-teal      { color: var(--teal);    }
+.c-comment   { color: var(--comment); }
+.c-bright    { color: var(--fg-bright); }
+.c-fg        { color: var(--fg);      }
+.c-bold      { font-weight: 700;      }
+.c-dim       { opacity: 0.55;         }
+.c-italic    { font-style: italic;    }
+.c-underline { text-decoration: underline; }
+
+/* ── ls entry colors ────────────────────────────────────────── */
+.ls-dir  { color: var(--blue);   font-weight: 700; }
+.ls-exec { color: var(--green);  font-weight: 700; }
+.ls-sym  { color: var(--cyan);   }
+.ls-file { color: var(--fg);     }
+
+/* ── grep highlight ─────────────────────────────────────────── */
+.grep-match { color: var(--red); font-weight: 700; }
+
+/* ── Error ──────────────────────────────────────────────────── */
+.error { color: var(--red); }
+
+/* ── Banner ─────────────────────────────────────────────────── */
+.banner     { color: var(--blue); line-height: 1.15; }
+.banner-sub { color: var(--comment); }
+.banner-sub strong { color: var(--fg); font-weight: 400; }
+
+/* ── neofetch layout ────────────────────────────────────────── */
+.neofetch-wrap {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  line-height: 1.55;
+}
+
+.neofetch-logo { color: var(--blue); flex-shrink: 0; }
+.neofetch-info { flex: 1; }
+
+/* ── matrix canvas ──────────────────────────────────────────── */
+#matrix-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+}
+
+/* ── sl train ───────────────────────────────────────────────── */
+.sl-track {
+  position: relative;
+  overflow: hidden;
+  height: 9em;
+  white-space: pre;
+  color: var(--yellow);
+}
+
+.sl-inner {
+  position: absolute;
+  top: 0;
+  white-space: pre;
+}
+
+/* ── top/htop ───────────────────────────────────────────────── */
+.top-header {
+  background: var(--blue);
+  color: var(--bg);
+  padding: 0 2px;
+  font-weight: 700;
+}
+
+/* ── Selection ──────────────────────────────────────────────── */
+::selection {
+  background: var(--selection);
+  color: var(--fg-bright);
+}
