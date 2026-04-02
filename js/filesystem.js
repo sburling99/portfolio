@@ -279,14 +279,9 @@ HISTCONTROL=ignoredups:erasedups
               ".secret": {
                 type: "file",
                 permissions: "-rw-------",
-                content: `nice find :)
+                content: `You found a hidden file.
 
-here's a cookie: 🍪
-
-Since you're clearly the curious type, I already like you.
 Feel free to reach out: ${cfg.email}
-
-P.S. Try:  :(){ :|:& };:
 `,
               },
               projects: {
